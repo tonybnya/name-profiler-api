@@ -11,6 +11,15 @@ import sqlite3
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from utils import (
+    classify_age_group,
+    current_timestamp,
+    error_response,
+    fetch_age,
+    fetch_gender,
+    fetch_nationality,
+    generate_uuid_v7,
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,6 +27,11 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 DB = "profiles.db"
+
+# Config constants
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+HOST = "0.0.0.0"
+PORT = int(os.environ.get("PORT", 5000))
 
 
 def get_db():
@@ -42,16 +56,6 @@ def init_db():
             created_at TEXT
         )
         """)
-
-
-# Config constants
-GENDERIZE_API_URL = "https://api.genderize.io"
-AGIFY_API_URL = "https://api.agify.io"
-NATIONALIZE_API_URL = "https://api.nationalize.io"
-REQUEST_TIMEOUT = 5  # seconds
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
-HOST = "0.0.0.0"
-PORT = int(os.environ.get("PORT", 5000))
 
 
 @app.route("/")
