@@ -10,4 +10,5 @@ dependencies = [
     "flask-cors>=6.0.2",
     "python-dotenv>=1.0.0",
     "requests>=2.33.1",
+    "uuid6>=2025.0.1",
 ]
