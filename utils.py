@@ -22,8 +22,10 @@ def classify_age(age: int) -> str:
     return "senior"
 
 
-def fetch_nationality(name: str, nationalize_api_url: str) -> dict[str, int | str]:
-    r = requests.get(f"{nationalize_api_url}?name={name}")
+def fetch_nationality(name: str) -> dict[str, int | str]:
+    NATIONALIZE_API_URL = "https://api.nationalize.io"
+
+    r = requests.get(f"{NATIONALIZE_API_URL}?name={name}")
     data = r.json()
 
     countries = data.get("country", [])
@@ -32,3 +34,15 @@ def fetch_nationality(name: str, nationalize_api_url: str) -> dict[str, int | st
 
     top = max(countries, key=lambda x: x["probability"])
     return top
+
+
+def fetch_age(name: str) -> dict[str, int | str]:
+    AGIFY_API_URL = "https://api.agify.io"
+
+    r = requests.get(f"{AGIFY_API_URL}?name={name}")
+    data = r.json()
+
+    if data.get("age") is None:
+        raise Exception("Agify returned an invalid response")
+
+    return data
