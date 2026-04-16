@@ -16,10 +16,14 @@ def current_timestamp() -> str:
 
 
 def generate_uuid_v7() -> str:
+    """Generate UUID v7.
+    """
     return str(uuid7())
 
 
 def classify_age(age: int) -> str:
+    """Classify age group from Agify API.
+    """
     if age <= 12:
         return "child"
     elif age <= 19:
@@ -30,6 +34,8 @@ def classify_age(age: int) -> str:
 
 
 def fetch_nationality(name: str) -> dict[str, int | str]:
+    """Pick the country with the highest probability from the Nationalize API.
+    """
     NATIONALIZE_API_URL = "https://api.nationalize.io"
 
     r = requests.get(f"{NATIONALIZE_API_URL}?name={name}")
@@ -44,6 +50,8 @@ def fetch_nationality(name: str) -> dict[str, int | str]:
 
 
 def fetch_age(name: str) -> dict[str, int | str]:
+    """ Fetch data from the Agify API.
+    """
     AGIFY_API_URL = "https://api.agify.io"
 
     r = requests.get(f"{AGIFY_API_URL}?name={name}")
@@ -56,6 +64,8 @@ def fetch_age(name: str) -> dict[str, int | str]:
 
 
 def fetch_gender(name):
+    """Fetch data from the Genderize API.
+    """
     GENDERIZE_API_URL = "https://api.genderize.io"
 
     r = requests.get(f"{GENDERIZE_API_URL}?name={name}")
@@ -68,4 +78,6 @@ def fetch_gender(name):
 
 
 def error_response(message: str, code: int) -> tuple[dict[str, str], int]:
+    """Build the response error structure.
+    """
     return {"status": "error", "message": message}, code
