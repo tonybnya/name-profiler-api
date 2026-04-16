@@ -69,6 +69,75 @@ def root():
     }
 
 
+@app.route("/api/profiles", methods=["POST"])
+def create_profile():
+    """Create Profile.
+    """
+    data = request.get_json()
+
+    if not data or "name" not in data:
+        return error_response("Missing or empty name", 400)
+
+    name = data["name"].strip().lower()
+    if not name:
+        return error_response("Missing or empty name", 400)
+
+    conn = get_db()
+    existing = conn.execute("SELECT * FROM profiles WHERE name = ?", (name,)).fetchone()
+
+    if existing:
+        return jsonify({
+            "status": "success",
+            "message": "Profile already exists",
+            "data": dict(existing)
+        }), 200
+
+    try:
+        gender = fetch_gender(name)
+        age = fetch_age(name)
+        nationality = fetch_nationality(name)
+    except Exception as e:
+        return error_response(str(e), 502)
+
+    profile_id = generate_uuid_v7()
+    created_at = current_timestamp()
+
+    age_group = classify_age_group(age["age"])
+
+    conn.execute("""
+        INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        profile_id,
+        name,
+        gender["gender"],
+        gender["probability"],
+        gender["count"],
+        age["age"],
+        age_group,
+        nationality["country_id"],
+        nationality["probability"],
+        created_at
+    ))
+    conn.commit()
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "id": profile_id,
+            "name": name,
+            "gender": gender["gender"],
+            "gender_probability": gender["probability"],
+            "sample_size": gender["count"],
+            "age": age["age"],
+            "age_group": age_group,
+            "country_id": nationality["country_id"],
+            "country_probability": nationality["probability"],
+            "created_at": created_at
+        }
+    }), 201
+
+
+
 @app.route("/api/profiles", methods=["GET"])
 def get_profiles():
     """Get All Profiles.
