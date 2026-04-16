@@ -8,8 +8,14 @@ import requests
 from uuid6 import uuid7
 from datetime import datetime, timezone
 
+# APIs urls
+GENDERIZE_API_URL = "https://api.genderize.io"
+AGIFY_API_URL = "https://api.agify.io"
+NATIONALIZE_API_URL = "https://api.nationalize.io"
+REQUEST_TIMEOUT = 5  # seconds
 
-def classify_age(age: int) -> str:
+
+def classify_age_group(age: int) -> str:
     """Classify age group from Agify API.
     """
     if age <= 12:
@@ -36,10 +42,12 @@ def error_response(message: str, code: int) -> tuple[dict[str, str], int]:
 def fetch_age(name: str) -> dict[str, int | str]:
     """ Fetch data from the Agify API.
     """
-    AGIFY_API_URL = "https://api.agify.io"
-
-    r = requests.get(f"{AGIFY_API_URL}?name={name}")
-    data = r.json()
+    # Call Agify API
+    response = requests.get(
+        AGIFY_API_URL, params={"name": name}, timeout=REQUEST_TIMEOUT
+    )
+    response.raise_for_status()
+    data = response.json()
 
     if data.get("age") is None:
         raise Exception("Agify returned an invalid response")
@@ -50,10 +58,12 @@ def fetch_age(name: str) -> dict[str, int | str]:
 def fetch_gender(name):
     """Fetch data from the Genderize API.
     """
-    GENDERIZE_API_URL = "https://api.genderize.io"
-
-    r = requests.get(f"{GENDERIZE_API_URL}?name={name}")
-    data = r.json()
+    # Call Genderize API
+    response = requests.get(
+        GENDERIZE_API_URL, params={"name": name}, timeout=REQUEST_TIMEOUT
+    )
+    response.raise_for_status()
+    data = response.json()
 
     if data.get("gender") is None or data.get("count") == 0:
         raise Exception("Genderize returned an invalid response")
@@ -64,10 +74,12 @@ def fetch_gender(name):
 def fetch_nationality(name: str) -> dict[str, int | str]:
     """Pick the country with the highest probability from the Nationalize API.
     """
-    NATIONALIZE_API_URL = "https://api.nationalize.io"
-
-    r = requests.get(f"{NATIONALIZE_API_URL}?name={name}")
-    data = r.json()
+    # Call Nationalize API
+    response = requests.get(
+        NATIONALIZE_API_URL, params={"name": name}, timeout=REQUEST_TIMEOUT
+    )
+    response.raise_for_status()
+    data = response.json()
 
     countries = data.get("country", [])
     if not countries:
