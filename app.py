@@ -116,6 +116,20 @@ def get_profile(id: str):
     })
 
 
+@app.route("/api/profiles/<id>", methods=["DELETE"])
+def delete_profile(id: str):
+    """Delete Profile.
+    """
+    conn = get_db()
+    cur = conn.execute("DELETE FROM profiles WHERE id = ?", (id,))
+
+    if cur.rowcount == 0:
+        return error_response("Profile not found", 404)
+
+    conn.commit()
+    return "", 204
+
+
 
 if __name__ == "__main__":
     init_db()
