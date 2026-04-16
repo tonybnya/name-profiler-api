@@ -7,6 +7,7 @@ Author      : @tonybnya
 import os
 
 import requests
+import sqlite3
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -16,6 +17,32 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+DB = "profiles.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with get_db() as conn:
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS profiles (
+            id TEXT PRIMARY KEY,
+            name TEXT UNIQUE,
+            gender TEXT,
+            gender_probability REAL,
+            sample_size INTEGER,
+            age INTEGER,
+            age_group TEXT,
+            country_id TEXT,
+            country_probability REAL,
+            created_at TEXT
+        )
+        """)
+
 
 # Config constants
 GENDERIZE_API_URL = "https://api.genderize.io"
@@ -38,4 +65,5 @@ def root():
 
 
 if __name__ == "__main__":
+    init_db()
     app.run(debug=DEBUG, host=HOST, port=PORT)
