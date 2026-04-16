@@ -60,12 +60,45 @@ def init_db():
 
 @app.route("/")
 def root():
-    """Root endpoint."""
+    """Root endpoint.
+    """
     return {
         "message": "Welcome to Name Profiler API",
         "version": "v1.0.0",
         "author": "@tonybnya",
     }
+
+
+@app.route("/api/profiles", methods=["GET"])
+def get_profiles():
+    """Get All Profiles.
+    """
+    gender = request.args.get("gender")
+    country_id = request.args.get("country_id")
+    age_group = request.args.get("age_group")
+
+    query = "SELECT id, name, gender, age, age_group, country_id FROM profiles WHERE 1=1"
+    params = []
+
+    if gender:
+        query += " AND LOWER(gender) = ?"
+        params.append(gender.lower())
+    if country_id:
+        query += " AND LOWER(country_id) = ?"
+        params.append(country_id.lower())
+    if age_group:
+        query += " AND LOWER(age_group) = ?"
+        params.append(age_group.lower())
+
+    conn = get_db()
+    rows = conn.execute(query, params).fetchall()
+
+    return jsonify({
+        "status": "success",
+        "count": len(rows),
+        "data": [dict(r) for r in rows]
+    })
+
 
 
 if __name__ == "__main__":
