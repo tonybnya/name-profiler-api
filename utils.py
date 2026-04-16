@@ -58,3 +58,7 @@ def fetch_gender(name):
         raise Exception("Genderize returned an invalid response")
 
     return data
+
+
+def error_response(message: str, code: int) -> tuple[dict[str, str], int]:
+    return {"status": "error", "message": message}, code
