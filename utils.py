@@ -9,18 +9,6 @@ from uuid6 import uuid7
 from datetime import datetime, timezone
 
 
-def current_timestamp() -> str:
-    """Generate ISO 8601 UTC timestamp.
-    """
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def generate_uuid_v7() -> str:
-    """Generate UUID v7.
-    """
-    return str(uuid7())
-
-
 def classify_age(age: int) -> str:
     """Classify age group from Agify API.
     """
@@ -33,20 +21,16 @@ def classify_age(age: int) -> str:
     return "senior"
 
 
-def fetch_nationality(name: str) -> dict[str, int | str]:
-    """Pick the country with the highest probability from the Nationalize API.
+def current_timestamp() -> str:
+    """Generate ISO 8601 UTC timestamp.
     """
-    NATIONALIZE_API_URL = "https://api.nationalize.io"
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    r = requests.get(f"{NATIONALIZE_API_URL}?name={name}")
-    data = r.json()
 
-    countries = data.get("country", [])
-    if not countries:
-        raise Exception("Nationalize returned an invalid response")
-
-    top = max(countries, key=lambda x: x["probability"])
-    return top
+def error_response(message: str, code: int) -> tuple[dict[str, str], int]:
+    """Build the response error structure.
+    """
+    return {"status": "error", "message": message}, code
 
 
 def fetch_age(name: str) -> dict[str, int | str]:
@@ -77,7 +61,23 @@ def fetch_gender(name):
     return data
 
 
-def error_response(message: str, code: int) -> tuple[dict[str, str], int]:
-    """Build the response error structure.
+def fetch_nationality(name: str) -> dict[str, int | str]:
+    """Pick the country with the highest probability from the Nationalize API.
     """
-    return {"status": "error", "message": message}, code
+    NATIONALIZE_API_URL = "https://api.nationalize.io"
+
+    r = requests.get(f"{NATIONALIZE_API_URL}?name={name}")
+    data = r.json()
+
+    countries = data.get("country", [])
+    if not countries:
+        raise Exception("Nationalize returned an invalid response")
+
+    top = max(countries, key=lambda x: x["probability"])
+    return top
+
+
+def generate_uuid_v7() -> str:
+    """Generate UUID v7.
+    """
+    return str(uuid7())
