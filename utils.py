@@ -46,3 +46,15 @@ def fetch_age(name: str) -> dict[str, int | str]:
         raise Exception("Agify returned an invalid response")
 
     return data
+
+
+def fetch_gender(name):
+    GENDERIZE_API_URL = "https://api.genderize.io"
+
+    r = requests.get(f"{GENDERIZE_API_URL}?name={name}")
+    data = r.json()
+
+    if data.get("gender") is None or data.get("count") == 0:
+        raise Exception("Genderize returned an invalid response")
+
+    return data
