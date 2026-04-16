@@ -100,6 +100,22 @@ def get_profiles():
     })
 
 
+@app.route("/api/profiles/<id>", methods=["GET"])
+def get_profile(id: str):
+    """Get Single Profile.
+    """
+    conn = get_db()
+    row = conn.execute("SELECT * FROM profiles WHERE id = ?", (id,)).fetchone()
+
+    if not row:
+        return error_response("Profile not found", 404)
+
+    return jsonify({
+        "status": "success",
+        "data": dict(row)
+    })
+
+
 
 if __name__ == "__main__":
     init_db()
