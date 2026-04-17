@@ -33,9 +33,6 @@ DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 5000))
 
-# Initialize database on module load (required for Vercel serverless)
-init_db()
-
 
 def get_db():
     conn = sqlite3.connect(DB)
@@ -59,6 +56,9 @@ def init_db():
             created_at TEXT
         )
         """)
+
+# Initialize database on module load (required for Vercel serverless)
+init_db()
 
 
 @app.route("/")
