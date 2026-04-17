@@ -26,7 +26,8 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
-DB = "profiles.db"
+# Use /tmp on serverless (Vercel), local directory otherwise
+DB = "/tmp/profiles.db" if os.environ.get("VERCEL") else "profiles.db"
 
 # Config constants
 DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
@@ -56,6 +57,7 @@ def init_db():
             created_at TEXT
         )
         """)
+
 
 # Initialize database on module load (required for Vercel serverless)
 init_db()
