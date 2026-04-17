@@ -33,6 +33,9 @@ DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 5000))
 
+# Initialize database on module load (required for Vercel serverless)
+init_db()
+
 
 def get_db():
     conn = sqlite3.connect(DB)
@@ -60,8 +63,7 @@ def init_db():
 
 @app.route("/")
 def root():
-    """Root endpoint.
-    """
+    """Root endpoint."""
     return {
         "message": "Welcome to Name Profiler API",
         "version": "v1.0.0",
@@ -71,8 +73,7 @@ def root():
 
 @app.route("/api/profiles", methods=["POST"])
 def create_profile():
-    """Create Profile.
-    """
+    """Create Profile."""
     data = request.get_json()
 
     if not data or "name" not in data:
@@ -86,11 +87,13 @@ def create_profile():
     existing = conn.execute("SELECT * FROM profiles WHERE name = ?", (name,)).fetchone()
 
     if existing:
-        return jsonify({
-            "status": "success",
-            "message": "Profile already exists",
-            "data": dict(existing)
-        }), 200
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Profile already exists",
+                "data": dict(existing),
+            }
+        ), 200
 
     try:
         gender = fetch_gender(name)
@@ -104,49 +107,54 @@ def create_profile():
 
     age_group = classify_age_group(age["age"])
 
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        profile_id,
-        name,
-        gender["gender"],
-        gender["probability"],
-        gender["count"],
-        age["age"],
-        age_group,
-        nationality["country_id"],
-        nationality["probability"],
-        created_at
-    ))
+    """,
+        (
+            profile_id,
+            name,
+            gender["gender"],
+            gender["probability"],
+            gender["count"],
+            age["age"],
+            age_group,
+            nationality["country_id"],
+            nationality["probability"],
+            created_at,
+        ),
+    )
     conn.commit()
 
-    return jsonify({
-        "status": "success",
-        "data": {
-            "id": profile_id,
-            "name": name,
-            "gender": gender["gender"],
-            "gender_probability": gender["probability"],
-            "sample_size": gender["count"],
-            "age": age["age"],
-            "age_group": age_group,
-            "country_id": nationality["country_id"],
-            "country_probability": nationality["probability"],
-            "created_at": created_at
+    return jsonify(
+        {
+            "status": "success",
+            "data": {
+                "id": profile_id,
+                "name": name,
+                "gender": gender["gender"],
+                "gender_probability": gender["probability"],
+                "sample_size": gender["count"],
+                "age": age["age"],
+                "age_group": age_group,
+                "country_id": nationality["country_id"],
+                "country_probability": nationality["probability"],
+                "created_at": created_at,
+            },
         }
-    }), 201
-
+    ), 201
 
 
 @app.route("/api/profiles", methods=["GET"])
 def get_profiles():
-    """Get All Profiles.
-    """
+    """Get All Profiles."""
     gender = request.args.get("gender")
     country_id = request.args.get("country_id")
     age_group = request.args.get("age_group")
 
-    query = "SELECT id, name, gender, age, age_group, country_id FROM profiles WHERE 1=1"
+    query = (
+        "SELECT id, name, gender, age, age_group, country_id FROM profiles WHERE 1=1"
+    )
     params = []
 
     if gender:
@@ -162,33 +170,26 @@ def get_profiles():
     conn = get_db()
     rows = conn.execute(query, params).fetchall()
 
-    return jsonify({
-        "status": "success",
-        "count": len(rows),
-        "data": [dict(r) for r in rows]
-    })
+    return jsonify(
+        {"status": "success", "count": len(rows), "data": [dict(r) for r in rows]}
+    )
 
 
 @app.route("/api/profiles/<id>", methods=["GET"])
 def get_profile(id: str):
-    """Get Single Profile.
-    """
+    """Get Single Profile."""
     conn = get_db()
     row = conn.execute("SELECT * FROM profiles WHERE id = ?", (id,)).fetchone()
 
     if not row:
         return error_response("Profile not found", 404)
 
-    return jsonify({
-        "status": "success",
-        "data": dict(row)
-    })
+    return jsonify({"status": "success", "data": dict(row)})
 
 
 @app.route("/api/profiles/<id>", methods=["DELETE"])
 def delete_profile(id: str):
-    """Delete Profile.
-    """
+    """Delete Profile."""
     conn = get_db()
     cur = conn.execute("DELETE FROM profiles WHERE id = ?", (id,))
 
@@ -197,7 +198,6 @@ def delete_profile(id: str):
 
     conn.commit()
     return "", 204
-
 
 
 if __name__ == "__main__":
