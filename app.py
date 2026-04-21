@@ -17,6 +17,7 @@ from utils import (
     DB,
     JSON_PATH
 )
+from search_parser import parse_search_query
 
 # Load environment variables from .env file
 load_dotenv()
@@ -255,6 +256,109 @@ def delete_profile(id: str):
     
     conn.commit()
     return "", 204
+
+
+@app.route("/api/profiles/search", methods=["GET"])
+def search_profiles():
+    """Search profiles using natural language query."""
+    q = request.args.get("q")
+    
+    # Validate query parameter exists
+    if not q or not q.strip():
+        return error_response("Missing query parameter", 400)
+    
+    # Parse natural language query
+    filters = parse_search_query(q.strip())
+    
+    if filters is None:
+        return error_response("Unable to interpret query", 422)
+    
+    # Get pagination parameters
+    page = request.args.get("page", "1")
+    limit = request.args.get("limit", "10")
+    
+    # Validate page (must be positive integer)
+    try:
+        page = int(page)
+        if page < 1:
+            return error_response("Invalid query parameters", 422)
+    except ValueError:
+        return error_response("Invalid query parameters", 422)
+    
+    # Validate limit (must be integer 1-50)
+    try:
+        limit = int(limit)
+        if limit < 1 or limit > 50:
+            return error_response("Invalid query parameters", 422)
+    except ValueError:
+        return error_response("Invalid query parameters", 422)
+    
+    # Build query from parsed filters
+    query = "SELECT * FROM profiles WHERE 1=1"
+    count_query = "SELECT COUNT(*) as total FROM profiles WHERE 1=1"
+    params = []
+    
+    # Apply gender filter
+    if "gender" in filters:
+        query += " AND LOWER(gender) = ?"
+        count_query += " AND LOWER(gender) = ?"
+        params.append(filters["gender"])
+    
+    # Apply age_group filter
+    if "age_group" in filters:
+        query += " AND LOWER(age_group) = ?"
+        count_query += " AND LOWER(age_group) = ?"
+        params.append(filters["age_group"])
+    
+    # Apply country_id filter (can be list for OR logic)
+    if "country_id" in filters:
+        countries = filters["country_id"]
+        if isinstance(countries, list):
+            placeholders = ",".join(["?"] * len(countries))
+            query += f" AND country_id IN ({placeholders})"
+            count_query += f" AND country_id IN ({placeholders})"
+            params.extend(countries)
+        else:
+            query += " AND country_id = ?"
+            count_query += " AND country_id = ?"
+            params.append(countries)
+    
+    # Apply min_age filter
+    if "min_age" in filters:
+        query += " AND age >= ?"
+        count_query += " AND age >= ?"
+        params.append(filters["min_age"])
+    
+    # Apply max_age filter
+    if "max_age" in filters:
+        query += " AND age <= ?"
+        count_query += " AND age <= ?"
+        params.append(filters["max_age"])
+    
+    # Get total count
+    conn = get_db()
+    total_result = conn.execute(count_query, params).fetchone()
+    total = total_result["total"] if total_result else 0
+    
+    # Apply default sorting by created_at desc
+    query += " ORDER BY created_at DESC"
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    query += " LIMIT ? OFFSET ?"
+    params.append(limit)
+    params.append(offset)
+    
+    # Execute query
+    rows = conn.execute(query, params).fetchall()
+    
+    return jsonify({
+        "status": "success",
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": [dict(r) for r in rows]
+    })
 
 
 # Commented endpoints for future implementation:
