@@ -56,37 +56,112 @@ def root():
 @app.route("/api/profiles", methods=["GET"])
 def get_profiles():
     """Get All Profiles with filtering, sorting, and pagination."""
+    # Define valid parameters
+    valid_params = {
+        "gender", "age_group", "country_id",
+        "min_age", "max_age",
+        "min_gender_probability", "min_country_probability",
+        "sort_by", "order", "page", "limit"
+    }
+    
+    # Check for unrecognized parameters
+    for param in request.args.keys():
+        if param not in valid_params:
+            return error_response("Invalid query parameters", 400)
+    
     # Get filter parameters
     gender = request.args.get("gender")
     age_group = request.args.get("age_group")
     country_id = request.args.get("country_id")
-    min_age = request.args.get("min_age", type=int)
-    max_age = request.args.get("max_age", type=int)
-    min_gender_probability = request.args.get("min_gender_probability", type=float)
-    min_country_probability = request.args.get("min_country_probability", type=float)
     
-    # Get sorting parameters
+    # Validate min_age (must be non-negative integer)
+    min_age = request.args.get("min_age")
+    if min_age is not None:
+        try:
+            min_age = int(min_age)
+            if min_age < 0:
+                return error_response("Invalid query parameters", 422)
+        except ValueError:
+            return error_response("Invalid query parameters", 422)
+    else:
+        min_age = None
+    
+    # Validate max_age (must be non-negative integer)
+    max_age = request.args.get("max_age")
+    if max_age is not None:
+        try:
+            max_age = int(max_age)
+            if max_age < 0:
+                return error_response("Invalid query parameters", 422)
+        except ValueError:
+            return error_response("Invalid query parameters", 422)
+    else:
+        max_age = None
+    
+    # Validate min_age <= max_age
+    if min_age is not None and max_age is not None and min_age > max_age:
+        return error_response("Invalid query parameters", 422)
+    
+    # Validate min_gender_probability (must be 0.0 to 1.0)
+    min_gender_probability = request.args.get("min_gender_probability")
+    if min_gender_probability is not None:
+        try:
+            min_gender_probability = float(min_gender_probability)
+            if min_gender_probability < 0.0 or min_gender_probability > 1.0:
+                return error_response("Invalid query parameters", 422)
+        except ValueError:
+            return error_response("Invalid query parameters", 422)
+    else:
+        min_gender_probability = None
+    
+    # Validate min_country_probability (must be 0.0 to 1.0)
+    min_country_probability = request.args.get("min_country_probability")
+    if min_country_probability is not None:
+        try:
+            min_country_probability = float(min_country_probability)
+            if min_country_probability < 0.0 or min_country_probability > 1.0:
+                return error_response("Invalid query parameters", 422)
+        except ValueError:
+            return error_response("Invalid query parameters", 422)
+    else:
+        min_country_probability = None
+    
+    # Validate sort_by (must be one of valid columns)
     sort_by = request.args.get("sort_by", "created_at")
+    valid_sort_columns = ["age", "created_at", "gender_probability"]
+    if sort_by not in valid_sort_columns:
+        return error_response("Invalid query parameters", 422)
+    
+    # Validate order (must be asc or desc)
     order = request.args.get("order", "desc")
+    if order.lower() not in ["asc", "desc"]:
+        return error_response("Invalid query parameters", 422)
+    order = order.upper()
     
-    # Get pagination parameters
-    page = request.args.get("page", 1, type=int)
-    limit = request.args.get("limit", 10, type=int)
+    # Validate page (must be positive integer)
+    page = request.args.get("page", "1")
+    try:
+        page = int(page)
+        if page < 1:
+            return error_response("Invalid query parameters", 422)
+    except ValueError:
+        return error_response("Invalid query parameters", 422)
     
-    # Validate pagination
-    if page < 1:
-        page = 1
-    if limit < 1:
-        limit = 1
-    elif limit > 50:
-        limit = 50
+    # Validate limit (must be integer 1-50)
+    limit = request.args.get("limit", "10")
+    try:
+        limit = int(limit)
+        if limit < 1 or limit > 50:
+            return error_response("Invalid query parameters", 422)
+    except ValueError:
+        return error_response("Invalid query parameters", 422)
     
     # Build base query
     query = "SELECT * FROM profiles WHERE 1=1"
     count_query = "SELECT COUNT(*) as total FROM profiles WHERE 1=1"
     params = []
     
-    # Apply filters
+    # Apply filters (case-insensitive)
     if gender:
         query += " AND LOWER(gender) = ?"
         count_query += " AND LOWER(gender) = ?"
@@ -97,10 +172,19 @@ def get_profiles():
         count_query += " AND LOWER(age_group) = ?"
         params.append(age_group.lower())
     
+    # Validate country_id exists in database
     if country_id:
-        query += " AND LOWER(country_id) = ?"
-        count_query += " AND LOWER(country_id) = ?"
-        params.append(country_id.lower())
+        country_id_upper = country_id.upper()
+        conn = get_db()
+        existing_country = conn.execute(
+            "SELECT 1 FROM profiles WHERE country_id = ? LIMIT 1",
+            (country_id_upper,)
+        ).fetchone()
+        if not existing_country:
+            return error_response("Invalid query parameters", 422)
+        query += " AND country_id = ?"
+        count_query += " AND country_id = ?"
+        params.append(country_id_upper)
     
     if min_age is not None:
         query += " AND age >= ?"
@@ -123,11 +207,6 @@ def get_profiles():
         params.append(min_country_probability)
     
     # Apply sorting
-    valid_sort_columns = ["age", "created_at", "gender_probability"]
-    if sort_by not in valid_sort_columns:
-        sort_by = "created_at"
-    
-    order = order.upper() if order.upper() in ["ASC", "DESC"] else "DESC"
     query += f" ORDER BY {sort_by} {order}"
     
     # Get total count before pagination
