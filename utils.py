@@ -4,6 +4,7 @@ Description : Helper functions
 Author      : @tonybnya
 """
 
+import os
 import requests
 from uuid6 import uuid7
 from datetime import datetime, timezone
@@ -16,7 +17,9 @@ GENDERIZE_API_URL = "https://api.genderize.io"
 AGIFY_API_URL = "https://api.agify.io"
 NATIONALIZE_API_URL = "https://api.nationalize.io"
 REQUEST_TIMEOUT = 5  # seconds
-DB = "profiles.db"
+
+# Use /tmp on serverless (Vercel), local directory otherwise
+DB = "/tmp/profiles.db" if os.environ.get("VERCEL") else "profiles.db"
 JSON_PATH = "seed_profiles.json"
 
 
