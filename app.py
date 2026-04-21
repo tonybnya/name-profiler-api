@@ -6,18 +6,11 @@ Author      : @tonybnya
 
 import os
 
-import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils import (
-    classify_age_group,
-    current_timestamp,
     error_response,
-    fetch_age,
-    fetch_gender,
-    fetch_nationality,
-    generate_uuid_v7,
     get_db,
     _create_table,
     seed,
@@ -60,7 +53,135 @@ def root():
     }
 
 
-# def init_db():
+@app.route("/api/profiles", methods=["GET"])
+def get_profiles():
+    """Get All Profiles with filtering, sorting, and pagination."""
+    # Get filter parameters
+    gender = request.args.get("gender")
+    age_group = request.args.get("age_group")
+    country_id = request.args.get("country_id")
+    min_age = request.args.get("min_age", type=int)
+    max_age = request.args.get("max_age", type=int)
+    min_gender_probability = request.args.get("min_gender_probability", type=float)
+    min_country_probability = request.args.get("min_country_probability", type=float)
+    
+    # Get sorting parameters
+    sort_by = request.args.get("sort_by", "created_at")
+    order = request.args.get("order", "desc")
+    
+    # Get pagination parameters
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 10, type=int)
+    
+    # Validate pagination
+    if page < 1:
+        page = 1
+    if limit < 1:
+        limit = 1
+    elif limit > 50:
+        limit = 50
+    
+    # Build base query
+    query = "SELECT * FROM profiles WHERE 1=1"
+    count_query = "SELECT COUNT(*) as total FROM profiles WHERE 1=1"
+    params = []
+    
+    # Apply filters
+    if gender:
+        query += " AND LOWER(gender) = ?"
+        count_query += " AND LOWER(gender) = ?"
+        params.append(gender.lower())
+    
+    if age_group:
+        query += " AND LOWER(age_group) = ?"
+        count_query += " AND LOWER(age_group) = ?"
+        params.append(age_group.lower())
+    
+    if country_id:
+        query += " AND LOWER(country_id) = ?"
+        count_query += " AND LOWER(country_id) = ?"
+        params.append(country_id.lower())
+    
+    if min_age is not None:
+        query += " AND age >= ?"
+        count_query += " AND age >= ?"
+        params.append(min_age)
+    
+    if max_age is not None:
+        query += " AND age <= ?"
+        count_query += " AND age <= ?"
+        params.append(max_age)
+    
+    if min_gender_probability is not None:
+        query += " AND gender_probability >= ?"
+        count_query += " AND gender_probability >= ?"
+        params.append(min_gender_probability)
+    
+    if min_country_probability is not None:
+        query += " AND country_probability >= ?"
+        count_query += " AND country_probability >= ?"
+        params.append(min_country_probability)
+    
+    # Apply sorting
+    valid_sort_columns = ["age", "created_at", "gender_probability"]
+    if sort_by not in valid_sort_columns:
+        sort_by = "created_at"
+    
+    order = order.upper() if order.upper() in ["ASC", "DESC"] else "DESC"
+    query += f" ORDER BY {sort_by} {order}"
+    
+    # Get total count before pagination
+    conn = get_db()
+    total_result = conn.execute(count_query, params).fetchone()
+    total = total_result["total"] if total_result else 0
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    query += " LIMIT ? OFFSET ?"
+    params.append(limit)
+    params.append(offset)
+    
+    # Execute query
+    rows = conn.execute(query, params).fetchall()
+    
+    return jsonify({
+        "status": "success",
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": [dict(r) for r in rows]
+    })
+
+
+@app.route("/api/profiles/<id>", methods=["GET"])
+def get_profile(id: str):
+    """Get Single Profile."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM profiles WHERE id = ?", (id,)).fetchone()
+    
+    if not row:
+        return error_response("Profile not found", 404)
+    
+    return jsonify({"status": "success", "data": dict(row)})
+
+
+@app.route("/api/profiles/<id>", methods=["DELETE"])
+def delete_profile(id: str):
+    """Delete Profile."""
+    conn = get_db()
+    cur = conn.execute("DELETE FROM profiles WHERE id = ?", (id,))
+    
+    if cur.rowcount == 0:
+        return error_response("Profile not found", 404)
+    
+    conn.commit()
+    return "", 204
+
+
+# Commented endpoints for future implementation:
+# @app.route("/api/profiles", methods=["POST"])
+# def create_profile():
+#     pass
 #     with get_db() as conn:
 #         conn.execute("""
 #         CREATE TABLE IF NOT EXISTS profiles (
